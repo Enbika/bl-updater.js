@@ -30,7 +30,7 @@ const Launcher = {
 				return fs.readFileSync(path.normalize(program.Manifest));
 			} else {
 				console.log("Retrieving latest version listings...");
-				return await fetch("http://localhost/manifests/r2033.dat",
+				return await fetch("http://update.blockland.us/latestVersion.php",
 						{ headers: { 'User-Agent': 'blocklandWIN/2.0' } })
 					.then(res => res.buffer());
 			}
@@ -98,6 +98,10 @@ const Launcher = {
 			percent = (j / total * 100).toFixed(2) + "%";
 			process.stdout.write(("[" + j + "/" + total + "]").padEnd(13) + l.name.padEnd(process.stdout.columns - 22) + percent.padStart(8) + "\r")
 
+			filepath = path.normalize(program.ProfilePath + l.name);
+			if(!fs.existsSync(path.dirname(filepath)))
+				fs.mkdirSync(path.dirname(filepath), { recursive: true });
+
 			await fetch(Launcher.download + "/" + l.sha1, {
 				headers: { 'User-Agent': "" },
 				agent: httpAgent
@@ -108,7 +112,7 @@ const Launcher = {
 				if(sha1 !== l.sha1) {
 					console.warn(`\x1b[0KWARNING: File ${l.name} has wrong hash, expected ${l.sha1}, got ${sha1}`)
 				} else {
-					fs.writeFileSync(path.normalize(program.ProfilePath + l.name), buffer)
+					fs.writeFileSync(filepath, buffer)
 					successfulFiles += 1;
 				}
 			})
