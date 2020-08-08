@@ -20,28 +20,29 @@ program
 const Launcher = {
 	"files": [],
 	"update": [],
-	"download": [],
+	"download": "",
 	"grabbed": false,
 
 	"downloadManifest": async function () {
-		try {
-			if(program.Manifest !== undefined) {
-				console.log(`Reading manifest file ${program.Manifest}...`);
-				return fs.readFileSync(path.normalize(program.Manifest));
-			} else {
-				console.log("Retrieving latest version listings...");
-				return await fetch("http://update.blockland.us/latestVersion.php",
-						{ headers: { 'User-Agent': 'blocklandWIN/2.0' } })
-					.then(res => res.buffer());
+		if(program.Manifest !== undefined) {
+			if(!fs.existsSync(path.normalize(program.Manifest))) {
+				console.error(`ERROR: Manifest file ${program.Manifest} does not exist.`);
+				return;
 			}
-		}
-		catch (e) {
-			console.error(e);
-			return new Buffer.from("DOWNLOADURL\thttp://update.blockland.us/blobs\r\n");
+			console.log(`Reading manifest file ${program.Manifest}...`);
+			return fs.readFileSync(path.normalize(program.Manifest));
+		} else {
+			console.log("Retrieving latest version listings...");
+			return await fetch("http://update.blockland.us/latestVersion.php",
+					{ headers: { 'User-Agent': 'blocklandWIN/2.0' } })
+				.then(res => res.buffer())
+				.catch(e => {console.error(e.toString()); return; });
 		}
 	},
 	"grabFileList": async function() {
 		await Launcher.downloadManifest().then(buffer => {
+			if(buffer == undefined)
+				return;
 			var buf = buffer.toString().split("\n");
 
 			Launcher.download = buf[0].split("\t")[1];
@@ -52,13 +53,12 @@ const Launcher = {
 	"generateUpdateList": async function() {
 		console.log("Generating list of files to update...")
 		if(!Launcher.grabbed)
-			await Launcher.grabFileList().then(() => {
-			});
+			await Launcher.grabFileList();
 		
 		for(i in Launcher.files) {
 			l = Launcher.files[i].split('\t');
 
-			if(l.length < 2)
+			if(l.length !== 2)
 				continue;
 
 			file = {
@@ -125,6 +125,9 @@ const Launcher = {
 function launcherPrompt() {
 	updates = Launcher.update.length;
 		
+	if(Launcher.download == "")
+		return; // don't show prompt if the download url is empty
+
 	if(program.Check) {
 		if(updates > 0) {
 			console.log(`\nUpdates are available for installation at ${program.ProfilePath}`);
